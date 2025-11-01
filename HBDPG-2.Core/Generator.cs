@@ -13,7 +13,7 @@ namespace HBDPG2.Core;
 
 public class Generator(SpecificationVersion specificationVersion)
 {
-    public async Task<Result> GeneratePassword()
+    public Result GeneratePassword()
     {
         return _generator.GeneratePassword(Passphrase1, Passphrase2, PasswordLength, CustomSymbols);
     }
