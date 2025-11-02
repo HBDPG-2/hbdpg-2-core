@@ -18,8 +18,32 @@ public class Generator(SpecificationVersion specificationVersion)
         return _generator.GeneratePassword(Passphrase1, Passphrase2, PasswordLength, CustomSymbols);
     }
 
-    public string Passphrase1 { private get; set; } = string.Empty;
-    public string Passphrase2 { private get; set; } = string.Empty;
+    public char[]? Passphrase1
+    {
+        private get => _passphrase1;
+        set
+        {
+            if (_passphrase1 is not null)
+            {
+                Array.Clear(_passphrase1);
+            }
+            
+            _passphrase1 = value;
+        }
+    }
+    public char[]? Passphrase2
+    {
+        private get => _passphrase2;
+        set
+        {
+            if (_passphrase2 is not null)
+            {
+                Array.Clear(_passphrase2);
+            }
+            
+            _passphrase2 = value;
+        }
+    }
     public int PasswordLength { private get; set; } = 32;
     public char[,]? CustomSymbols
     {
@@ -28,6 +52,11 @@ public class Generator(SpecificationVersion specificationVersion)
         {
             if (value is null || (value is not null && _generator.ValidateCCT(value)))
             {
+                if (_customSymbols is not null)
+                {
+                    Array.Clear(_customSymbols);
+                }
+                
                 _customSymbols = value;
             }
             else
@@ -41,6 +70,8 @@ public class Generator(SpecificationVersion specificationVersion)
         get => _specificationVersion;
     }
 
+    private char[]? _passphrase1 = null;
+    private char[]? _passphrase2 = null;
     private char[,]? _customSymbols = null;
     private readonly IGenerator _generator = specificationVersion switch
     {

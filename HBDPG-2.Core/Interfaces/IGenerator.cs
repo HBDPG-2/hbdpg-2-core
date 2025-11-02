@@ -10,9 +10,9 @@ namespace HBDPG2.Core.Interfaces;
 
 internal interface IGenerator
 {
-    Result GeneratePassword(string passhrase1, string passhrase2);
-    Result GeneratePassword(string passhrase1, string passhrase2, int passwordLength);
-    Result GeneratePassword(string passhrase1, string passhrase2, char[,]? customSymbols);
-    Result GeneratePassword(string passhrase1, string passhrase2, int passwordLength, char[,]? customSymbols);
+    Result GeneratePassword(char[]? passhrase1, char[]? passhrase2);
+    Result GeneratePassword(char[]? passhrase1, char[]? passhrase2, int passwordLength);
+    Result GeneratePassword(char[]? passhrase1, char[]? passhrase2, char[,]? customSymbols);
+    Result GeneratePassword(char[]? passhrase1, char[]? passhrase2, int passwordLength, char[,]? customSymbols);
     bool ValidateCCT(char[,] symbols);
 }

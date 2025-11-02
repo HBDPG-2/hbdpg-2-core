@@ -17,33 +17,68 @@ namespace HBDPG2.Core.Implementations;
 
 internal class V10 : IGenerator
 {
-    public Result GeneratePassword(string passphrase1, string passphrase2, int passwordLength, char[,]? customSymbols)
+    public Result GeneratePassword(char[]? passphrase1, char[]? passphrase2, int passwordLength, char[,]? customSymbols)
     {
         ValidateInputs(passphrase1, passphrase2, passwordLength, customSymbols);
 
         Stopwatch stopwatch = Stopwatch.StartNew();
 
-        string? password = null;
+        char[]? password = null;
         double entropy = 0;
         double elapsedTime;
         int attempt = 0;
 
-        byte[] hash = GetHash(passphrase1, passphrase2, passwordLength);
-        byte[] nibbles = GetNibbles(hash);
+        byte[]? hash = null;
+        byte[]? nibbles = null;
 
-        for (; attempt < 16; attempt++)
+        try
         {
-            byte[] indexes = GetIndexes(nibbles, attempt);
-            password = GetCharacters(indexes, customSymbols ?? _symbols);
+            hash = GetHash(passphrase1!, passphrase2!, passwordLength);
+            nibbles = GetNibbles(hash);
 
-            if (CheckResult(password, ref entropy))
+            for (; attempt < 16; attempt++)
             {
-                break;
+                byte[]? indexes = null;
+
+                try
+                {
+                    indexes = GetIndexes(nibbles, attempt);
+                    password = GetCharacters(indexes, customSymbols ?? _symbols);
+
+                    if (CheckResult(password, ref entropy))
+                    {
+                        break;
+                    }
+                    else
+                    {
+                        if (password is not null)
+                        {
+                            Array.Clear(password);
+                        }
+
+                        password = null;
+                        entropy = 0;
+                    }
+                }
+                finally
+                {
+                    if (indexes is not null)
+                    {
+                        Array.Clear(indexes);
+                    }
+                }
             }
-            else
+        }
+        finally
+        {
+            if (hash is not null)
             {
-                entropy = 0;
-                password = null;
+                Array.Clear(hash);
+            }
+
+            if (nibbles is not null)
+            {
+                Array.Clear(nibbles);
             }
         }
 
@@ -53,13 +88,13 @@ internal class V10 : IGenerator
         return new Result(password, entropy, elapsedTime, attempt);
     }
 
-    public Result GeneratePassword(string passphrase1, string passphrase2) =>
+    public Result GeneratePassword(char[]? passphrase1, char[]? passphrase2) =>
         GeneratePassword(passphrase1, passphrase2, 32, null);
 
-    public Result GeneratePassword(string passphrase1, string passphrase2, int passwordLength) =>
+    public Result GeneratePassword(char[]? passphrase1, char[]? passphrase2, int passwordLength) =>
         GeneratePassword(passphrase1, passphrase2, passwordLength, null);
 
-    public Result GeneratePassword(string passphrase1, string passphrase2, char[,]? customSymbols) =>
+    public Result GeneratePassword(char[]? passphrase1, char[]? passphrase2, char[,]? customSymbols) =>
         GeneratePassword(passphrase1, passphrase2, 32, customSymbols);
 
     public bool ValidateCCT(char[,] symbols)
@@ -68,14 +103,14 @@ internal class V10 : IGenerator
         return true;
     }
     
-    private bool ValidateInputs(string passphrase1, string passphrase2, int passwordLength, char[,]? customSymbols)
+    private bool ValidateInputs(char[]? passphrase1, char[]? passphrase2, int passwordLength, char[,]? customSymbols)
     {
-        if (string.IsNullOrEmpty(passphrase1) || passphrase1.Length < 8)
+        if (passphrase1 is null || passphrase1.Length < 8)
         {
             throw new ArgumentException("Passphrase 1 must be at least 8 characters long.");
         }
 
-        if (string.IsNullOrEmpty(passphrase2) || passphrase2.Length < 8)
+        if (passphrase2 is null || passphrase2.Length < 8)
         {
             throw new ArgumentException("Passphrase 2 must be at least 8 characters long.");
         }
@@ -93,14 +128,38 @@ internal class V10 : IGenerator
         return true;
     }
 
-    private static byte[] GetHash(string passphrase1, string passphrase2, int passwordLength)
+    private static byte[] GetHash(char[] passphrase1, char[] passphrase2, int passwordLength)
     {
-        using Argon2id hasher = new(Encoding.UTF8.GetBytes(passphrase1));
-        hasher.Salt = Encoding.UTF8.GetBytes(passphrase2);
-        hasher.DegreeOfParallelism = 24;
-        hasher.MemorySize = 256000;
-        hasher.Iterations = 48;
-        return hasher.GetBytes(passwordLength * 16);
+        byte[]? passphrase1Bytes = null,
+                passphrase2Bytes = null;
+
+        try
+        {
+            passphrase1Bytes = Encoding.UTF8.GetBytes(passphrase1);
+            passphrase2Bytes = Encoding.UTF8.GetBytes(passphrase2);
+
+            using Argon2id hasher = new(passphrase1Bytes)
+            {
+                Salt = passphrase2Bytes,
+                DegreeOfParallelism = 24,
+                MemorySize = 256000,
+                Iterations = 48
+            };
+
+            return hasher.GetBytes(passwordLength * 16);
+        }
+        finally
+        {
+            if (passphrase1Bytes is not null)
+            {
+                Array.Clear(passphrase1Bytes);
+            }
+
+            if (passphrase2Bytes is not null)
+            {
+                Array.Clear(passphrase2Bytes);
+            }
+        }
     }
 
     private static byte[] GetNibbles(byte[] bytes)
@@ -153,19 +212,19 @@ internal class V10 : IGenerator
         return indexes;
     }
 
-    private static string GetCharacters(byte[] indexes, char[,] symbols)
+    private static char[] GetCharacters(byte[] indexes, char[,] symbols)
     {
-        StringBuilder characters = new();
+        char[] characters = new char[indexes.Length / 2];
 
         for (int i = 0; i < indexes.Length; i += 2)
         {
-            characters.Append(symbols[indexes[i], indexes[i + 1]]);
+            characters[i / 2] = symbols[indexes[i], indexes[i + 1]];
         }
 
-        return characters.ToString();
+        return characters;
     }
 
-    private static bool CheckResult(string password, ref double entropy)
+    private static bool CheckResult(char[] password, ref double entropy)
     {
         HashSet<char> uniqueChars = [];
         int upperCaseCount = 0;

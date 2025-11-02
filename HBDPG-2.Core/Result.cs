@@ -8,10 +8,40 @@
 
 namespace HBDPG2.Core;
 
-public struct Result(string? password, double entropy, double elapsedTime, int attempt)
+public class Result(char[]? password, double entropy, double elapsedTime, int attempt) : IDisposable
 {
-    public readonly string? Password { get => password; }
-    public readonly double Entropy { get => entropy; }
-    public readonly double ElapsedTime { get => elapsedTime; }
-    public readonly int Attempt { get => attempt; }
+    public char[]? Password { get => password; private set => password = value; }
+    public double Entropy { get => entropy; }
+    public double ElapsedTime { get => elapsedTime; }
+    public int Attempt { get => attempt; }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    protected virtual void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                if (Password is not null)
+                {
+                    Array.Clear(Password);
+                    Password = null;
+                }
+            }
+            
+            _disposed = true;
+        }
+    }
+
+    private bool _disposed = false;
+
+    ~Result()
+    {
+        Dispose(false);
+    }
 }
